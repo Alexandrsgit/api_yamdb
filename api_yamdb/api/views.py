@@ -2,11 +2,11 @@ from rest_framework import filters
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.decorators import action
-# from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
-from api.permissions import IsAdmin, IsModeraror, IsUser
+# from api.permissions import IsAdmin, IsModeraror, IsUser
 from api.serializers import UserSerializer
 from api.pagination import UserPagination
 from reviews.models import User
@@ -18,7 +18,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
-    permission_classes = (IsAdmin,)
+    permission_classes = (AllowAny,)
     pagination_class = UserPagination
     filter_backends = (filters.SearchFilter, DjangoFilterBackend,
                        filters.OrderingFilter)
@@ -27,7 +27,7 @@ class UserViewSet(viewsets.ModelViewSet):
     ordering_fields = ('username',)
 
     @action(methods=['GET', 'PATCH'], detail=False, url_path='me',
-            permission_classes=(IsUser,))
+            permission_classes=(AllowAny,))
     def user_self_profile(self, request):
         """Получение и изменение информации пользователя о себе users/me."""
         # request.uesr.username(get_user = request.user)
