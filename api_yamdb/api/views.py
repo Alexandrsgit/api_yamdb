@@ -1,16 +1,64 @@
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import mixins, viewsets
+
+from api.filters import TitleFilter
+from api.serializers import (CategorySerializer,
+                             GenreSerializer,
+                             TitleSerializer,
+                             TitleGETSerializer,
+                             UserSerializer)
+from reviews.models import Category, Genre, Title, User
+
 from rest_framework import filters
-from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 # from api.permissions import IsAdmin, IsModeraror, IsUser
-from api.serializers import UserSerializer
 from api.pagination import UserPagination
-from reviews.models import User
 
+
+class TitleViewSet(viewsets.ModelViewSet):
+    """Обрабатываем запросы о произведениях."""
+    queryset = Title.objects.all()
+    serializer_class = TitleSerializer
+    # permission_classes = 
+    # pagination_class = 
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = TitleFilter
+
+    def get_serializer_class(self):
+        """Определяем, какой сериализатор будет
+        использован в зависимости от метода запроса."""
+        if self.request.method == 'GET':
+            return TitleGETSerializer
+        return TitleSerializer
+
+
+class CreateListDestroyViewSet(mixins.CreateModelMixin,
+                               mixins.ListModelMixin,
+                               mixins.DestroyModelMixin,
+                               viewsets.GenericViewSet):
+    pass
+
+
+class CategoryViewSet(CreateListDestroyViewSet):
+    """Обрабатываем запросы о категориях."""
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    lookup_field = 'slug'
+    # permission_classes = 
+    # pagination_class = 
+
+
+class GenreViewSet(CreateListDestroyViewSet):
+    """Обрабатываем запросы о жанрах."""
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    lookup_field = 'slug'
+    # permission_classes = 
+    # pagination_class = 
 
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet для модели User."""
