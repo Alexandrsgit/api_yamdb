@@ -1,0 +1,53 @@
+import datetime as dt
+from rest_framework import serializers
+from rest_framework.relations import SlugRelatedField
+
+from reviews.models import Category, Genre, Title
+
+
+class GenreSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели Genre."""
+
+    class Meta:
+        model = Genre
+        fields = ('name', 'slug',)
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    """Сериализатор для модели Category."""
+
+    class Meta:
+        model = Category
+        fields = ('name', 'slug',)
+
+
+class TitleGETSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели Title при GET запросах."""
+    category = CategorySerializer(read_only=True)
+    genres = GenreSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Title
+        fields = ('name', 'year', 'description', 'category', 'genres')
+
+
+class TitleSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели Title при небезопасных запросах."""
+    genres = SlugRelatedField(
+        slug_field='slug',
+        many=True,
+        queryset=Genre.objects.all())
+    category = SlugRelatedField(
+        slug_field='slug',
+        queryset=Category.objects.all())
+
+    class Meta:
+        model = Title
+        fields = ('name', 'year', 'description', 'category', 'genres')
+
+    def validate_year(self, data):
+        year_now = dt.date.today().year
+        if self.initial_data['year'] > year_now:
+            raise serializers.ValidationError(
+                f'Год выпуска произведения не может быть больше {year_now}')
+        return data
