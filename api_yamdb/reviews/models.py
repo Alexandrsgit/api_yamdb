@@ -15,6 +15,7 @@ USER_ROLES = (
     ('moderator', 'Модератор'),
 )
 
+
 class Category(models.Model):
     """Модель для категорий."""
     name = models.CharField(
@@ -101,6 +102,7 @@ class GenreTitle(models.Model):
     def __str__(self):
         return f'{self.genre} {self.title}'
 
+
 class User(AbstractUser):
     """Модель пользователя."""
 
@@ -113,9 +115,16 @@ class User(AbstractUser):
                                          verbose_name='Код подтверждения',
                                          blank=True)
 
-
     class Meta:
         """Уникальность полей в модели User."""
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=['username', 'email'],
+                name='unique_user'
+            )
+        ]
+
 
 class Review(models.Model):
     title = models.ForeignKey(
@@ -191,10 +200,3 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.text
-
-        constraints = [
-            models.UniqueConstraint(
-                fields=['username', 'email'],
-                name='unique_user'
-            )
-        ]
