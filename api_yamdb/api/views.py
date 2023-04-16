@@ -6,16 +6,16 @@ from api.serializers import (CategorySerializer,
                              GenreSerializer,
                              TitleSerializer,
                              TitleGETSerializer,
-                             UserSerializer)
+                             UserSerializer, UserNotSafeSerializer)
 from reviews.models import Category, Genre, Title, User
 
 from rest_framework import filters
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-# from api.permissions import IsAdmin, IsModeraror, IsUser
+from api.permissions import IsAdmin, IsModeraror, IsUser
 from api.pagination import UserPagination
 
 
@@ -23,7 +23,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     """Обрабатываем запросы о произведениях."""
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
-    # permission_classes = 
+    # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
     # pagination_class = 
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
@@ -35,6 +35,7 @@ class TitleViewSet(viewsets.ModelViewSet):
             return TitleGETSerializer
         return TitleSerializer
 
+    # нужно написать функцию для предоставлении возсожности добавлять тайтлы и пр для админа. По аналогии с меой.
 
 class CreateListDestroyViewSet(mixins.CreateModelMixin,
                                mixins.ListModelMixin,
@@ -48,7 +49,7 @@ class CategoryViewSet(CreateListDestroyViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     lookup_field = 'slug'
-    # permission_classes = 
+    # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
     # pagination_class = 
 
 
@@ -57,7 +58,7 @@ class GenreViewSet(CreateListDestroyViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     lookup_field = 'slug'
-    # permission_classes = 
+    # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
     # pagination_class = 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -66,7 +67,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAdmin,)
     pagination_class = UserPagination
     filter_backends = (filters.SearchFilter, DjangoFilterBackend,
                        filters.OrderingFilter)
@@ -74,13 +75,20 @@ class UserViewSet(viewsets.ModelViewSet):
     filterset_fields = ('role',)
     ordering_fields = ('username',)
 
+
+    def get_serializer_class(self):
+        """Выбор какой сериализатор будет
+        использован, если метод не безопасен."""
+        if self.request.method == 'GET':
+            return UserSerializer
+        return UserNotSafeSerializer
+
+    # вот типа такого, чтобы был пермижен класс и при каких метадах, без url_path только
     @action(methods=['GET', 'PATCH'], detail=False, url_path='me',
-            permission_classes=(AllowAny,))
+            permission_classes=(IsUser,))
     def user_self_profile(self, request):
         """Получение и изменение информации пользователя о себе users/me."""
-        # request.uesr.username(get_user = request.user)
-        get_selfuser_username = 'admin'
-        self_profile = get_object_or_404(User, username=get_selfuser_username)
+        self_profile = get_object_or_404(User, username=request.user.username)
         if request.method == 'PATCH':
             serializer = self.get_serializer(self_profile, data=request.data,
                                              partial=True)

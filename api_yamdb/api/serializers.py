@@ -56,7 +56,7 @@ class TitleSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Сериализатор дял модели User."""
+    """Сериализатор для модели User."""
 
     role = serializers.ChoiceField(choices=USER_ROLES, default='user')
 
@@ -64,6 +64,22 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'email', 'first_name', 'last_name', 'bio',
                   'role')
+
+        # Валидация на уникальность
+        validators = [
+            UniqueTogetherValidator(
+                queryset=User.objects.all(),
+                fields=('username', 'email')
+            )
+        ]
+
+class UserNotSafeSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели User."""
+    role = serializers.ChoiceField(choices=USER_ROLES, read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
 
         # Валидация на уникальность
         validators = [
