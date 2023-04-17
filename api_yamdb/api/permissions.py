@@ -31,10 +31,10 @@ class IsAdmin(permissions.BasePermission):
     """Кастомный класс для проверки прав для роли admin."""
 
     def has_permission(self, request, view):
-        return request.user.role == 'admin'
+        return request.user.role == 'admin' or request.user.is_superuser == True
 
     def has_object_permission(self, request, view, obj):
         """Функция проверяет является ли пользователь admin."""
         if request.method in permissions.SAFE_METHODS:
             return True
-        return request.user.role == 'admin'
+        return request.user.role == 'admin' or request.user.is_superuser == True
