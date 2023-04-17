@@ -2,6 +2,7 @@ import datetime as dt
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 from rest_framework.validators import UniqueTogetherValidator
+from django.contrib.auth.hashers import make_password
 
 from reviews.models import Category, Genre, Title, User, USER_ROLES
 
@@ -54,7 +55,6 @@ class TitleSerializer(serializers.ModelSerializer):
         return data
 
 
-
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для модели User."""
 
@@ -73,13 +73,16 @@ class UserSerializer(serializers.ModelSerializer):
             )
         ]
 
+
 class UserNotSafeSerializer(serializers.ModelSerializer):
     """Сериализатор для модели User."""
+
     role = serializers.ChoiceField(choices=USER_ROLES, read_only=True)
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
+        fields = ('username', 'email', 'first_name', 'last_name', 'bio',
+                  'role')
 
         # Валидация на уникальность
         validators = [

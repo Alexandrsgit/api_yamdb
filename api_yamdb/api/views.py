@@ -24,7 +24,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
-    # pagination_class = 
+    # pagination_class =
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
 
@@ -36,6 +36,7 @@ class TitleViewSet(viewsets.ModelViewSet):
         return TitleSerializer
 
     # нужно написать функцию для предоставлении возсожности добавлять тайтлы и пр для админа. По аналогии с меой.
+
 
 class CreateListDestroyViewSet(mixins.CreateModelMixin,
                                mixins.ListModelMixin,
@@ -50,7 +51,7 @@ class CategoryViewSet(CreateListDestroyViewSet):
     serializer_class = CategorySerializer
     lookup_field = 'slug'
     # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
-    # pagination_class = 
+    # pagination_class =
 
 
 class GenreViewSet(CreateListDestroyViewSet):
@@ -59,7 +60,8 @@ class GenreViewSet(CreateListDestroyViewSet):
     serializer_class = GenreSerializer
     lookup_field = 'slug'
     # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
-    # pagination_class = 
+    # pagination_class =
+
 
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet для модели User."""
@@ -75,11 +77,10 @@ class UserViewSet(viewsets.ModelViewSet):
     filterset_fields = ('role',)
     ordering_fields = ('username',)
 
-
     def get_serializer_class(self):
         """Выбор какой сериализатор будет
         использован, если метод не безопасен."""
-        if self.request.method == 'GET':
+        if self.request.method == 'GET' or self.request.user.role == 'admin':
             return UserSerializer
         return UserNotSafeSerializer
 

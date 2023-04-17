@@ -11,7 +11,7 @@ class IsUser(permissions.BasePermission):
         """Функция проверяет является ли пользователь user."""
         if request.method in permissions.SAFE_METHODS:
             return True
-        return obj.author == request.user and request.user.role == 'user' or request.user.role == 'admin' or request.user.role == 'moderator'
+        return obj.author == request.user and (request.user.role == 'user' or request.user.role == 'admin' or request.user.role == 'moderator')
 
 
 class IsModeraror(permissions.BasePermission):
