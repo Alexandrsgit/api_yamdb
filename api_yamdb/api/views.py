@@ -80,7 +80,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         """Выбор какой сериализатор будет
         использован, если метод не безопасен."""
-        if self.request.method == 'GET' or self.request.user.role == 'admin':
+        if self.request.method == 'GET' or (self.request.user.role == 'admin' or self.request.user.is_superuser == True):
             return UserSerializer
         return UserNotSafeSerializer
 
