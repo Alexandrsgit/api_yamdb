@@ -21,6 +21,7 @@ from api.pagination import UserPagination
 
 class TitleViewSet(viewsets.ModelViewSet):
     """Обрабатываем запросы о произведениях."""
+
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
@@ -29,8 +30,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     filterset_class = TitleFilter
 
     def get_serializer_class(self):
-        """Определяем, какой сериализатор будет
-        использован в зависимости от метода запроса."""
+        """Определяем, какой сериализатор будет использован в зависимости от метода запроса."""
         if self.request.method == 'GET':
             return TitleGETSerializer
         return TitleSerializer
@@ -47,6 +47,7 @@ class CreateListDestroyViewSet(mixins.CreateModelMixin,
 
 class CategoryViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о категориях."""
+
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     lookup_field = 'slug'
@@ -56,6 +57,7 @@ class CategoryViewSet(CreateListDestroyViewSet):
 
 class GenreViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о жанрах."""
+
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     lookup_field = 'slug'
@@ -78,9 +80,9 @@ class UserViewSet(viewsets.ModelViewSet):
     ordering_fields = ('username',)
 
     def get_serializer_class(self):
-        """Выбор какой сериализатор будет
-        использован, если метод не безопасен."""
-        if self.request.method == 'GET' or (self.request.user.role == 'admin' or self.request.user.is_superuser == True):
+        """Выбор какой сериализатор будет использован, если метод не безопасен."""
+        if self.request.method == 'GET' or (
+            self.request.user.role == 'admin' or self.request.user.is_superuser is True):
             return UserSerializer
         return UserNotSafeSerializer
 

@@ -25,6 +25,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class TitleGETSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Title при GET запросах."""
+
     category = CategorySerializer(read_only=True)
     genres = GenreSerializer(many=True, read_only=True)
 
@@ -35,6 +36,7 @@ class TitleGETSerializer(serializers.ModelSerializer):
 
 class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Title при небезопасных запросах."""
+
     genres = SlugRelatedField(
         slug_field='slug',
         many=True,
