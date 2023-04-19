@@ -2,8 +2,6 @@ import datetime as dt
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 from rest_framework.validators import UniqueTogetherValidator
-from django.contrib.auth.hashers import make_password
-
 from reviews.models import Category, Genre, Title, User, USER_ROLES
 
 
@@ -93,3 +91,22 @@ class UserNotSafeSerializer(serializers.ModelSerializer):
                 fields=('username', 'email')
             )
         ]
+
+
+class UserSignUp(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ('email', 'username')
+
+        validators = [
+            UniqueTogetherValidator(
+                queryset=User.objects.all(),
+                fields=('username', 'email')
+            )
+        ]
+
+    def validate_username(self, data):
+        if self.initial_data['username'] == 'me':
+            raise serializers.ValidationError('username не может быть - "me"')
+        return data

@@ -1,4 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from rest_framework import mixins, viewsets
 
 from api.filters import TitleFilter
@@ -103,3 +104,5 @@ class UserViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
         serializer = self.get_serializer(self_profile)
         return Response(serializer.data)
+
+
