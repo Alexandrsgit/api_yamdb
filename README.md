@@ -30,7 +30,7 @@ python manage.py migrate
 
 
 Запустить проект:
-...
+```
 python manage.py runserver
 ```
 
