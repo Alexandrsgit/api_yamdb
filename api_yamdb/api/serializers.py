@@ -73,6 +73,22 @@ class UserSerializer(serializers.ModelSerializer):
             )
         ]
 
+    def validate_email(self, data):
+        if self.initial_data['email'] in User.objects.all():
+            raise serializers.ValidationError('Данный email уже используется')
+        return data
+
+    def validate(self, data):
+        if User.objects.filter(email=data.get('email')).exists():
+            raise serializers.ValidationError(
+                'Занято! Давай другую почту, брат.'
+            )
+        if User.objects.filter(username=data.get('username')).exists():
+            raise serializers.ValidationError(
+                'Занятно! Ты думал ты особенный?'
+            )
+        return data
+
 
 class UserNotSafeSerializer(serializers.ModelSerializer):
     """Сериализатор для модели User."""
@@ -94,6 +110,8 @@ class UserNotSafeSerializer(serializers.ModelSerializer):
 
 
 class UserSignUp(serializers.ModelSerializer):
+    email = serializers.EmailField(max_length=100, required=True)
+    username = serializers.CharField(required=True)
 
     class Meta:
         model = User
@@ -106,7 +124,26 @@ class UserSignUp(serializers.ModelSerializer):
             )
         ]
 
-    def validate_username(self, data):
-        if self.initial_data['username'] == 'me':
-            raise serializers.ValidationError('username не может быть - "me"')
+    def validate_username(self, value):
+        if value.lower() == 'me':
+            raise serializers.ValidationError(
+                'нельзя использовать "me" как username')
+        return value
+
+    def validate(self, data):
+        if User.objects.filter(email=data.get('email')).exists():
+            raise serializers.ValidationError(
+                'Данный email уже используется'
+            )
+        if User.objects.filter(username=data.get('username')).exists():
+            raise serializers.ValidationError(
+                'Данный username уже используется'
+            )
         return data
+
+
+class ConfirmCodeCheck(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ('username', 'confirmation_code')

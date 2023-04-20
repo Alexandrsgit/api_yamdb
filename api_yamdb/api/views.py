@@ -1,5 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.contrib.auth.tokens import default_token_generator
 from rest_framework import mixins, viewsets
 
 from api.filters import TitleFilter
@@ -7,7 +7,8 @@ from api.serializers import (CategorySerializer,
                              GenreSerializer,
                              TitleSerializer,
                              TitleGETSerializer,
-                             UserSerializer, UserNotSafeSerializer)
+                             UserSerializer, UserNotSafeSerializer, UserSignUp,
+                             ConfirmCodeCheck)
 from reviews.models import Category, Genre, Title, User
 
 from rest_framework import filters
@@ -16,6 +17,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.core.mail import send_mail
 from api.permissions import IsAdmin, IsModeraror, IsUser
 from api.pagination import UserPagination
 
@@ -80,10 +82,11 @@ class UserViewSet(viewsets.ModelViewSet):
     filterset_fields = ('role',)
     ordering_fields = ('username',)
 
+
     def get_serializer_class(self):
         """Выбор какой сериализатор будет использован, если метод не безопасен."""
         if self.request.method == 'GET' or (
-            self.request.user.role == 'admin' or self.request.user.is_superuser is True):
+                self.request.user.role == 'admin' or self.request.user.is_superuser is True):
             return UserSerializer
         return UserNotSafeSerializer
 
@@ -99,10 +102,45 @@ class UserViewSet(viewsets.ModelViewSet):
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data,
-                                status=status.HTTP_201_CREATED)
+                                status=status.HTTP_200_OK)
             return Response(serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)
         serializer = self.get_serializer(self_profile)
         return Response(serializer.data)
 
+class SignUpView(mixins.CreateModelMixin):
+    permission_classes = (AllowAny,)
+    serializer_class = UserSignUp
+    queryset = User.objects.all()
 
+    def user_create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data.get('username')
+            email = serializer.validated_data.get('email')
+            user, _ = User.objects.get(username=username)
+            confirmation_code = default_token_generator.make_token(user)
+            send_mail(
+                'confirmation code',
+                confirmation_code,
+                'api_yamdb',
+                [email],
+                fail_silently=False,
+            )
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ConfirmCodeCheckView(viewsets.ModelViewSet):
+    serializer_class = ConfirmCodeCheck
+
+#    def code_check(self, request):
+#        serializer = self.get_serializer(data=request.data)
+#        if serializer.is_valid():
+#            username = serializer.validated_data.get('username')
+#            confirmation_code = serializer.validated_data.get['confirmation_code']
+#            user, _ = User.objects.get(username=username)
+#            if username == user.username:
+#                if confirmation_code == user.confirmation_code
+#                return access_token(user)
+#        return 

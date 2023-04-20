@@ -5,7 +5,9 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from api.views import CategoryViewSet, GenreViewSet, TitleViewSet, UserViewSet
+from api.views import (
+    CategoryViewSet, GenreViewSet, TitleViewSet,
+    UserViewSet, SignUpView, ConfirmCodeCheck)
 
 app_name = 'api'
 
@@ -17,6 +19,6 @@ router.register(r'users', UserViewSet)
 
 urlpatterns = [
     path('v1/', include(router.urls)),
-    path('v1/auth/signup/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('v1/auth/token/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('v1/auth/signup/', SignUpView),
+    path('v1/auth/token/', ConfirmCodeCheck),
 ]
