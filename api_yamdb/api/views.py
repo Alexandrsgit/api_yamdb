@@ -1,64 +1,61 @@
+from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import mixins, viewsets
+from django.shortcuts import get_object_or_404
+from rest_framework import filters, viewsets
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
 
+from api.mixins import CreateListDestroyViewSet
 from api.filters import TitleFilter
+from api.permissions import IsAdmin, IsModeraror, IsUser
+from api.pagination import UserPagination
 from api.serializers import (CategorySerializer,
                              GenreSerializer,
                              TitleSerializer,
                              TitleGETSerializer,
-                             UserSerializer)
-from reviews.models import Category, Genre, Title, User
-
-from rest_framework import filters
-from rest_framework import status
-from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-# from api.permissions import IsAdmin, IsModeraror, IsUser
-from api.pagination import UserPagination
+                             UserSerializer,
+                             UserNotSafeSerializer)
+from reviews.models import (Category, Genre, Title, User)
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     """Обрабатываем запросы о произведениях."""
-    queryset = Title.objects.all()
-    serializer_class = TitleSerializer
-    # permission_classes = 
-    # pagination_class = 
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')).order_by('id')
+    permission_classes = (IsAdmin,)
+    pagination_class = UserPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
+    search_fields = ('=name',)
 
     def get_serializer_class(self):
         """Определяем, какой сериализатор будет
         использован в зависимости от метода запроса."""
-        if self.request.method == 'GET':
+        if self.request.method in ['GET']:
             return TitleGETSerializer
         return TitleSerializer
 
-
-class CreateListDestroyViewSet(mixins.CreateModelMixin,
-                               mixins.ListModelMixin,
-                               mixins.DestroyModelMixin,
-                               viewsets.GenericViewSet):
-    pass
+    def get_permissions(self):
+        """Выбираем permissions с правами доступа
+        в зависимости от метода запроса."""
+        if self.request.method == 'GET':
+            return (IsAuthenticatedOrReadOnly(),)
+        return super().get_permissions()
 
 
 class CategoryViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о категориях."""
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
-    # permission_classes = 
-    # pagination_class = 
 
 
 class GenreViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о жанрах."""
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    lookup_field = 'slug'
-    # permission_classes = 
-    # pagination_class = 
+
 
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet для модели User."""
@@ -66,7 +63,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAdmin,)
     pagination_class = UserPagination
     filter_backends = (filters.SearchFilter, DjangoFilterBackend,
                        filters.OrderingFilter)
@@ -74,13 +71,18 @@ class UserViewSet(viewsets.ModelViewSet):
     filterset_fields = ('role',)
     ordering_fields = ('username',)
 
+    def get_serializer_class(self):
+        """Выбор какой сериализатор будет
+        использован, если метод не безопасен."""
+        if self.request.method == 'GET' or self.request.user.role == 'admin':
+            return UserSerializer
+        return UserNotSafeSerializer
+
     @action(methods=['GET', 'PATCH'], detail=False, url_path='me',
-            permission_classes=(AllowAny,))
+            permission_classes=(IsUser,))
     def user_self_profile(self, request):
         """Получение и изменение информации пользователя о себе users/me."""
-        # request.uesr.username(get_user = request.user)
-        get_selfuser_username = 'admin'
-        self_profile = get_object_or_404(User, username=get_selfuser_username)
+        self_profile = get_object_or_404(User, username=request.user.username)
         if request.method == 'PATCH':
             serializer = self.get_serializer(self_profile, data=request.data,
                                              partial=True)

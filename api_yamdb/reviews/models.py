@@ -3,12 +3,6 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.core.validators import RegexValidator
 from django.db import models
 
-
-CHOICES_CATEGORY = (
-    ('Книга', 'book'),
-    ('Музыка', 'music'),
-    ('Фильм', 'movie'),
-)
 USER_ROLES = (
     ('user', 'Пользователь'),
     ('admin', 'Администратор'),
@@ -20,8 +14,7 @@ class Category(models.Model):
     """Модель для категорий."""
     name = models.CharField(
         max_length=256,
-        verbose_name='Hазвание',
-        choices=CHOICES_CATEGORY)
+        verbose_name='Hазвание')
     slug = models.SlugField(
         max_length=50,
         verbose_name='slug',
@@ -79,7 +72,7 @@ class Title(models.Model):
         related_name='titles',
         null=True,
         on_delete=models.SET_NULL)
-    genres = models.ManyToManyField(
+    genre = models.ManyToManyField(
         Genre,
         through='GenreTitle',
         verbose_name='Жанр',
@@ -89,7 +82,6 @@ class Title(models.Model):
         return self.name
 
     class Meta:
-        ordering = ['name', 'year']
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
 
