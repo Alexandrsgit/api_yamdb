@@ -16,6 +16,7 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import AccessToken
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from api.permissions import IsAdmin, IsModeraror, IsUser
@@ -123,7 +124,7 @@ class SignUpView(mixins.CreateModelMixin):
             send_mail(
                 'confirmation code',
                 confirmation_code,
-                'api_yamdb',
+                None,
                 [email],
                 fail_silently=False,
             )
@@ -134,13 +135,14 @@ class SignUpView(mixins.CreateModelMixin):
 class ConfirmCodeCheckView(viewsets.ModelViewSet):
     serializer_class = ConfirmCodeCheck
 
-#    def code_check(self, request):
-#        serializer = self.get_serializer(data=request.data)
-#        if serializer.is_valid():
-#            username = serializer.validated_data.get('username')
-#            confirmation_code = serializer.validated_data.get['confirmation_code']
-#            user, _ = User.objects.get(username=username)
-#            if username == user.username:
-#                if confirmation_code == user.confirmation_code
-#                return access_token(user)
-#        return 
+    def user_check_and_give_token(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data.get('username')
+            confirmation_code = serializer.validated_data.get('confirmation_code')
+            user, _ = User.objects.get(username=username)
+            if default_token_generator.check_token(confirmation_code):
+                return AccessToken(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
