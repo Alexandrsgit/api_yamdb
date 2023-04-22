@@ -2,9 +2,12 @@ import datetime as dt
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 from rest_framework.validators import UniqueTogetherValidator
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password
 
-from reviews.models import Category, Genre, Title, User, USER_ROLES
+from reviews.models import (Category, Genre, Title,
+                            User, USER_ROLES, Comment, Review)
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -78,6 +81,7 @@ class UserSerializer(serializers.ModelSerializer):
                 fields=('username', 'email')
             )
         ]
+        
     def validate_username(self, value):
         if value.lower() == 'me':
             raise serializers.ValidationError(
@@ -94,6 +98,7 @@ class UserSerializer(serializers.ModelSerializer):
                 'Данный username уже используется'
             )
         return data
+
 
 class UserNotSafeSerializer(serializers.ModelSerializer):
     """Сериализатор для модели User."""
@@ -112,3 +117,50 @@ class UserNotSafeSerializer(serializers.ModelSerializer):
                 fields=('username', 'email')
             )
         ]
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    title = serializers.SlugField(
+        slug_field='name',
+        read_only=True
+    )
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True
+    )
+
+    def validate_score(self, value):
+        if 0 > value < 10:
+            raise serializers.ValidationError('Оценка по 10-бальной шкале!')
+        raise value
+
+    def validate(self, data):
+        request = self.context['request']
+        author = request.user
+        title_id = self.context.get('view').kwargs.get('title_id')
+        title = get_object_or_404(Title, pk=title_id)
+        if (
+            request.method == 'POST'
+            and Review.objects.filter(title=title, author=author).exists()
+        ):
+            raise ValidationError('Может существовать только один отзыв!')
+        return data
+
+    class Meta:
+        fields = '__all__'
+        model = Review
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    review = serializers.SlugRelatedField(
+        slug_field='text',
+        read_only=True
+    )
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True
+    )
+
+    class Meta:
+        fields = '__all__'
+        model = Comment
