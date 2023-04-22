@@ -1,70 +1,58 @@
 from csv import DictReader
 from django.core.management import BaseCommand
 
-from reviews.models import Category, Genre, GenreTitle, Title
+from reviews.models import (Category, Comment, Genre, GenreTitle,
+                            Title, Review, User)
 
+MODEL_FILE = [
+    (Category, 'static/data/category.csv'),
+    (Genre, 'static/data/genre.csv'),
+    (Title, 'static/data/titles.csv'),
+    (GenreTitle, 'static/data/genre_title.csv'),
+    (User, 'static/data/users.csv'),
+    (Review, 'static/data/review.csv'),
+    (Comment, 'static/data/comments.csv')
+]
 
 class Command(BaseCommand):
+    """Загрузка базы данных из csv файла."""
+
     def handle(self, *args, **options):
-
-        record = []
-        for row in DictReader(open('static/data/category.csv')):
-            records = Category(**row)
-            # records=Category(id=row['id'], name=row['name'],
-            #                  slug=row['slug'])
-            record.append(records)
-        Category.objects.all().delete()
-        Category.objects.bulk_create(record)
-
-        record = []
-        for row in DictReader(open('static/data/genre.csv')):
-            records = Genre(**row)
-            # records=Genre(id=row['id'], name=row['name'], slug=row['slug'])
-            record.append(records)
-        Genre.objects.all().delete()
-        Genre.objects.bulk_create(record)
-
-        record = []
-        for row in DictReader(open('static/data/titles.csv')):
-            records = Title(id=row['id'], name=row['name'],
-                            year=row['year'], category_id=row['category'])
-            record.append(records)
-        Title.objects.all().delete()
-        Title.objects.bulk_create(record)
-
-        record = []
-        for row in DictReader(open('static/data/genre_title.csv')):
-            records = GenreTitle(id=row['id'], title_id=row['title_id'],
-                                 genre_id=row['genre_id'])
-            record.append(records)
-        GenreTitle.objects.all().delete()
-        GenreTitle.objects.bulk_create(record)
-
-        # record = []
-        # for row in DictReader(open('static/data/users.csv')):
-        #     records = User(
-        #         id=row['id'], username=row['username'],
-        #         email=row['email'], role=row['role'])
-        #     record.append(records)
-        # User.objects.all().delete()
-        # User.objects.bulk_create(record)
-
-        # record = []
-        # for row in DictReader(open('static/data/review.csv')):
-        #     records = Review(
-        #         id=row['id'], title_id=row['title_id'],
-        #         text=row['text'], author_id=row['author'],
-        #         score=row['score'], pub_date=row['pub_date'])
-        #     record.append(records)
-        # Review.objects.all().delete()
-        # Review.objects.bulk_create(record)
-
-        # record = []
-        # for row in DictReader(open('static/data/comments.csv')):
-        #     records = Comment(
-        #         id=row['id'], review_id=row['review_id'],
-        #         text=row['text'], author_id=row['author'],
-        #         pub_date=row['pub_date'])
-        #     record.append(records)
-        # Comment.objects.all().delete()
-        # Comment.objects.bulk_create(record)
+        for model, fils in MODEL_FILE:
+            with open(fils, newline='') as csvfile:
+                record = []
+                for row in DictReader(csvfile):
+                    if model == Category or model == Genre:
+                        records = model(**row)
+                    if model == Title:
+                        records = Title(id=row['id'], name=row['name'],
+                                        year=row['year'],
+                                        category_id=row['category'])
+                    if model == GenreTitle:
+                        records = GenreTitle(id=row['id'],
+                                             genre_id=row['genre_id'],
+                                             title_id=row['title_id'])
+                    if model == User:
+                        records = User(id=row['id'], username=row['username'],
+                                       email=row['email'], role=row['role'])
+                    if model == Review:
+                        records = Review(id=row['id'],
+                                         title_id=row['title_id'],
+                                         text=row['text'],
+                                         author_id=row['author'],
+                                         score=row['score'],
+                                         pub_date=row['pub_date'])
+                    if model == Comment:
+                        records = Comment(id=row['id'],
+                                          review_id=row['review_id'],
+                                          text=row['text'],
+                                          author_id=row['author'],
+                                          pub_date=row['pub_date'])
+                    record.append(records)
+                if model.objects.exists():
+                    model.objects.all().delete()
+                    self.stdout.write(self.style.SUCCESS(
+                        f'Данные модели {model} удалены!'))
+                model.objects.bulk_create(record)
+                self.stdout.write(self.style.SUCCESS(
+                    f'Данные модели {model} загружены!))'))

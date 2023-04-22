@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'djoser',
+    'rest_framework_simplejwt',
     'api',
     'reviews',
     'django_filters',
@@ -93,9 +93,9 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
 
-#    'DEFAULT_AUTHENTICATION_CLASSES': [
-#        'rest_framework_simplejwt.authentication.JWTAuthentication',
-#    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
 
 }
 

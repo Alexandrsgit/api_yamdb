@@ -1,66 +1,64 @@
+from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import mixins, viewsets
+from django.shortcuts import get_object_or_404
+from rest_framework import filters, viewsets
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
 
+from api.mixins import CreateListDestroyViewSet
 from api.filters import TitleFilter
+from api.permissions import IsAdmin, IsModeraror, IsUser
+from api.pagination import UserPagination
 from api.serializers import (CategorySerializer,
                              GenreSerializer,
                              TitleSerializer,
                              TitleGETSerializer,
                              UserSerializer,
                              CommentSerializer,
-                             ReviewSerializer)
+                             ReviewSerializer,
+                             UserNotSafeSerializer)
 from reviews.models import Category, Genre, Title, User, Review
-
-from rest_framework import filters
-from rest_framework import status
-from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-# from api.permissions import IsAdmin, IsModeraror, IsUser
-from api.pagination import UserPagination
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     """Обрабатываем запросы о произведениях."""
-    queryset = Title.objects.all()
-    serializer_class = TitleSerializer
-    # permission_classes =
-    # pagination_class =
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')).order_by('id')
+    permission_classes = (IsAdmin,)
+    pagination_class = UserPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
+    search_fields = ('=name',)
 
     def get_serializer_class(self):
         """Определяем, какой сериализатор будет
         использован в зависимости от метода запроса."""
-        if self.request.method == 'GET':
+        if self.request.method in ['GET']:
             return TitleGETSerializer
         return TitleSerializer
 
-
-class CreateListDestroyViewSet(mixins.CreateModelMixin,
-                               mixins.ListModelMixin,
-                               mixins.DestroyModelMixin,
-                               viewsets.GenericViewSet):
-    pass
-
-
+    def get_permissions(self):
+        """Выбираем permissions с правами доступа
+        в зависимости от метода запроса."""
+        if self.request.method == 'GET':
+            return (IsAuthenticatedOrReadOnly(),)
+        return super().get_permissions()
+       
+       
 class CategoryViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о категориях."""
+
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
-    # permission_classes =
-    # pagination_class =
 
 
 class GenreViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о жанрах."""
+
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    lookup_field = 'slug'
-    # permission_classes =
-    # pagination_class =
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -69,63 +67,82 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAdmin,)
     pagination_class = UserPagination
     filter_backends = (filters.SearchFilter, DjangoFilterBackend,
                        filters.OrderingFilter)
+    http_method_names = ['get', 'post', 'patch', 'delete']
     search_fields = ('=username',)
     filterset_fields = ('role',)
     ordering_fields = ('username',)
 
+    def get_serializer_class(self):
+        """Выбор какой сериализатор будет
+        использован, если метод не безопасен."""
+        if self.request.method == 'GET' or self.request.user.role == 'admin':
+            return UserSerializer
+        return UserNotSafeSerializer
+
     @action(methods=['GET', 'PATCH'], detail=False, url_path='me',
-            permission_classes=(AllowAny,))
+            permission_classes=(IsUser,))
     def user_self_profile(self, request):
         """Получение и изменение информации пользователя о себе users/me."""
-        # request.uesr.username(get_user = request.user)
-        get_selfuser_username = 'admin'
-        self_profile = get_object_or_404(User, username=get_selfuser_username)
+        self_profile = get_object_or_404(User, username=request.user.username)
         if request.method == 'PATCH':
             serializer = self.get_serializer(self_profile, data=request.data,
                                              partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data,
-                                status=status.HTTP_201_CREATED)
+                                status=status.HTTP_200_OK)
             return Response(serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)
         serializer = self.get_serializer(self_profile)
         return Response(serializer.data)
 
 
-class CommentViewSet(viewsets.ModelViewSet):
-    serializer_class = CommentSerializer
-    # permission_classes =
+class ReviewSerializer(serializers.ModelSerializer):
+    title = serializers.SlugField(
+        slug_field='name',
+        read_only=True
+    )
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True
+    )
 
-    def get_queryset(self):
-        review = get_object_or_404(
-            Review,
-            id=self.kwargs.get('review_id'))
-        return review.comment.all()
+    def validate_score(self, value):
+        if 0 > value < 10:
+            raise serializers.ValidationError('Оценка по 10-бальной шкале!')
+        raise value
 
-    def perform_create(self, serializer):
-        review = get_object_or_404(
-            Review,
-            id=self.kwargs.get('review_id'))
-        serializer.save(author=self.request.user, review=review)
+    def validate(self, data):
+        request = self.context['request']
+        author = request.user
+        title_id = self.context.get('view').kwargs.get('title_id')
+        title = get_object_or_404(Title, pk=title_id)
+        if (
+            request.method == 'POST'
+            and Review.objects.filter(title=title, author=author).exists()
+        ):
+            raise ValidationError('Может существовать только один отзыв!')
+        return data
+
+    class Meta:
+        fields = '__all__'
+        model = Review
 
 
-class ReviewViewSet(viewsets.ModelViewSet):
-    serializer_class = ReviewSerializer
-    # permission_classes =
+class CommentSerializer(serializers.ModelSerializer):
+    review = serializers.SlugRelatedField(
+        slug_field='text',
+        read_only=True
+    )
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True
+    )
 
-    def get_queryset(self):
-        title = get_object_or_404(
-            Title,
-            id=self.kwargs.get('title_id'))
-        return title.reviews.all
-
-    def perform_create(self, serializer):
-        title = get_object_or_404(
-            Title,
-            id=self.kwargs.get('title_id'))
-        serializer.save(author=self.request.user, title=title)
+    class Meta:
+        fields = '__all__'
+        model = Comment
