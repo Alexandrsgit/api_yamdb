@@ -76,6 +76,23 @@ class UserSerializer(serializers.ModelSerializer):
         ]
 
 
+    def validate_username(self, value):
+        if value.lower() == 'me':
+            raise serializers.ValidationError(
+                'нельзя использовать "me" как username')
+        return value
+
+    def validate(self, data):
+        if User.objects.filter(email=data.get('email')).exists():
+            raise serializers.ValidationError(
+                'Данный email уже используется'
+            )
+        if User.objects.filter(username=data.get('username')).exists():
+            raise serializers.ValidationError(
+                'Данный username уже используется'
+            )
+        return data
+
 class UserNotSafeSerializer(serializers.ModelSerializer):
     """Сериализатор для модели User."""
 
