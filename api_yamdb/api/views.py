@@ -8,7 +8,7 @@ from api.serializers import (CategorySerializer, GenreSerializer,
                              UserSerializer, CommentSerializer,
                              ReviewSerializer, UserNotSafeSerializer,
                              UserSignUp, ConfirmCodeCheck)
-from rest_framework import filters, viewsets, mixins, status, generics
+from rest_framework import filters, viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
@@ -22,6 +22,7 @@ from reviews.models import Category, Genre, Title, User, Review, Comment
 
 class TitleViewSet(viewsets.ModelViewSet):
     """Обрабатываем запросы о произведениях."""
+
     queryset = Title.objects.annotate(
         rating=Avg('reviews__score')).order_by('id')
     permission_classes = (IsAdmin,)
@@ -31,18 +32,19 @@ class TitleViewSet(viewsets.ModelViewSet):
     search_fields = ('=name',)
 
     def get_serializer_class(self):
-        """Определяем, какой сериализатор будет
-        использован в зависимости от метода запроса."""
+        """Определяем, какой сериализатор будет использован в зависимости от
+        метода запроса."""
         if self.request.method in ['GET']:
             return TitleGETSerializer
         return TitleSerializer
 
     def get_permissions(self):
-        """Выбираем permissions с правами доступа
-        в зависимости от метода запроса."""
+        """Выбираем permissions с правами доступа в зависимости от метода
+        запроса."""
         if self.request.method == 'GET':
             return (IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
+
 
 class CategoryViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о категориях."""
@@ -64,7 +66,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAdmin,)
     pagination_class = UserPagination
     filter_backends = (filters.SearchFilter, DjangoFilterBackend,
                        filters.OrderingFilter)
@@ -76,7 +78,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         """Выбор какой сериализатор будет использован, если метод не безопасен."""
         if self.request.method == 'GET' or (
-                self.request.user.role == 'admin' or self.request.user.is_superuser is True):
+                self.request.user.role == 'admin' or
+                self.request.user.is_superuser is True):
             return UserSerializer
         return UserNotSafeSerializer
 
@@ -97,6 +100,7 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(self_profile)
         return Response(serializer.data)
 
+
 class SignUpView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSignUp
@@ -104,7 +108,8 @@ class SignUpView(generics.CreateAPIView):
 
     def post(self, request):
         email = request.data.get('email')
-        if User.objects.filter(email=email).exists():
+        username = request.data.get('username')
+        if User.objects.filter(email=email).exists() and User.objects.filter(username=username).exists():
             user = User.objects.get(email=email)
             confirmation_code = default_token_generator.make_token(user)
             send_mail('confirmation code', confirmation_code, None,
@@ -123,6 +128,8 @@ class SignUpView(generics.CreateAPIView):
 
 
 class ConfirmCodeCheckView(generics.ListCreateAPIView):
+    """Проверка пользователя и кода подтверждения."""
+
     permission_classes = (AllowAny,)
     serializer_class = ConfirmCodeCheck
     queryset = User.objects.all()
@@ -132,13 +139,15 @@ class ConfirmCodeCheckView(generics.ListCreateAPIView):
         if serializer.is_valid():
             username = serializer.validated_data.get('username')
             confirmation_code = serializer.validated_data.get('confirmation_code')
-            user = User.objects.get(username=username)
-            check_token = default_token_generator.check_token(user, confirmation_code)
-            if check_token is True:
-                return RefreshToken.access_token(user)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            user = get_object_or_404(User, username=username)
+            if user.confirmation_code == confirmation_code:
+                token = RefreshToken.access_token(user)
+                serializer = self.serializer_class(token)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class CommentViewSet(viewsets.ModelViewSet):

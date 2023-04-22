@@ -12,6 +12,7 @@ USER_ROLES = (
 
 class Category(models.Model):
     """Модель для категорий."""
+
     name = models.CharField(
         max_length=256,
         verbose_name='Hазвание')
@@ -35,6 +36,7 @@ class Category(models.Model):
 
 class Genre(models.Model):
     """Модель для жанров."""
+
     name = models.CharField(
         max_length=256,
         verbose_name='Hазвание',)
@@ -58,6 +60,7 @@ class Genre(models.Model):
 
 class Title(models.Model):
     """Модель для произведений."""
+
     name = models.CharField(
         max_length=256,
         verbose_name='Hазвание произведения')
@@ -88,6 +91,7 @@ class Title(models.Model):
 
 class GenreTitle(models.Model):
     """Дополнительная модель, связывающая произведения и жанры."""
+
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
     title = models.ForeignKey(Title, on_delete=models.CASCADE)
 
