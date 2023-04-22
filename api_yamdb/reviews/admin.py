@@ -9,10 +9,10 @@ class TitleAdmin(admin.ModelAdmin):
         'pk', 'name', 'year', 'description', 'category', 'title_genre')
     list_editable = ('category',)
     search_fields = ('name',)
-    list_filter = ('year', 'category', 'genres')
+    list_filter = ('year', 'category', 'genre')
 
     def title_genre(self, object):
-        return ', '.join((genres.name for genres in object.genres.all()))
+        return ', '.join((genre.name for genre in object.genre.all()))
     title_genre.short_description = 'Жанры'
 
 
@@ -28,6 +28,7 @@ class GenreAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')
     search_fields = ('name',)
     list_filter = ('name',)
+
 
 admin.site.register(User)
 
