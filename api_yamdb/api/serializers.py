@@ -73,19 +73,20 @@ class UserSerializer(serializers.ModelSerializer):
             )
         ]
 
-    def validate_email(self, data):
-        if self.initial_data['email'] in User.objects.all():
-            raise serializers.ValidationError('Данный email уже используется')
-        return data
+    def validate_username(self, value):
+        if value.lower() == 'me':
+            raise serializers.ValidationError(
+                'нельзя использовать "me" как username')
+        return value
 
     def validate(self, data):
         if User.objects.filter(email=data.get('email')).exists():
             raise serializers.ValidationError(
-                'Занято! Давай другую почту, брат.'
+                'Данный email уже используется'
             )
         if User.objects.filter(username=data.get('username')).exists():
             raise serializers.ValidationError(
-                'Занятно! Ты думал ты особенный?'
+                'Данный username уже используется'
             )
         return data
 

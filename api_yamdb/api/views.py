@@ -13,12 +13,14 @@ from reviews.models import Category, Genre, Title, User
 
 from rest_framework import filters
 from rest_framework import status
+from rest_framework import generics
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
+from django.db import IntegrityError
 from api.permissions import IsAdmin, IsModeraror, IsUser
 from api.pagination import UserPagination
 
@@ -79,10 +81,10 @@ class UserViewSet(viewsets.ModelViewSet):
     pagination_class = UserPagination
     filter_backends = (filters.SearchFilter, DjangoFilterBackend,
                        filters.OrderingFilter)
+    http_method_names = ['get', 'post', 'patch', 'delete']
     search_fields = ('=username',)
     filterset_fields = ('role',)
     ordering_fields = ('username',)
-
 
     def get_serializer_class(self):
         """Выбор какой сериализатор будет использован, если метод не безопасен."""
@@ -109,31 +111,31 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(self_profile)
         return Response(serializer.data)
 
-class SignUpView(mixins.CreateModelMixin):
+class SignUpView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSignUp
-    queryset = User.objects.all()
 
-    def user_create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            username = serializer.validated_data.get('username')
-            email = serializer.validated_data.get('email')
-            user, _ = User.objects.get(username=username)
+    def user_create(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            try:
+                user, _ = User.objects.get_or_create(
+                    **serializer.validated_data)
+            except IntegrityError:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             confirmation_code = default_token_generator.make_token(user)
             send_mail(
                 'confirmation code',
                 confirmation_code,
                 None,
-                [email],
+                serializer.validated_data['email'],
                 fail_silently=False,
             )
             return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ConfirmCodeCheckView(viewsets.ModelViewSet):
     serializer_class = ConfirmCodeCheck
+
 
     def user_check_and_give_token(self, request):
         serializer = self.get_serializer(data=request.data)
