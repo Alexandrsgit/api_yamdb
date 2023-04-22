@@ -75,6 +75,7 @@ class UserViewSet(viewsets.ModelViewSet):
     pagination_class = UserPagination
     filter_backends = (filters.SearchFilter, DjangoFilterBackend,
                        filters.OrderingFilter)
+    http_method_names = ['get', 'post', 'patch', 'delete']
     search_fields = ('=username',)
     filterset_fields = ('role',)
     ordering_fields = ('username',)
