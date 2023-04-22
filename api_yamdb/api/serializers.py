@@ -44,7 +44,7 @@ class TitleGETSerializer(serializers.ModelSerializer):
 class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Title при небезопасных запросах."""
 
-    genre = SlugRelatedField
+    genre = SlugRelatedField(
         slug_field='slug',
         many=True,
         queryset=Genre.objects.all())
@@ -120,7 +120,7 @@ class UserNotSafeSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    title = serializers.SlugField(
+    title = serializers.SlugRelatedField(
         slug_field='name',
         read_only=True
     )
