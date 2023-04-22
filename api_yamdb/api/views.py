@@ -1,19 +1,13 @@
+from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.tokens import default_token_generator
-from rest_framework import mixins, viewsets
-
 from api.filters import TitleFilter
-from api.serializers import (CategorySerializer,
-                             GenreSerializer,
-                             TitleSerializer,
-                             TitleGETSerializer,
-                             UserSerializer, UserNotSafeSerializer, UserSignUp,
-                             ConfirmCodeCheck)
-from reviews.models import Category, Genre, Title, User
-
-from rest_framework import filters
-from rest_framework import status
-from rest_framework import generics
+from api.serializers import (CategorySerializer, GenreSerializer,
+                             TitleSerializer, TitleGETSerializer,
+                             UserSerializer, CommentSerializer,
+                             ReviewSerializer, UserNotSafeSerializer,
+                             UserSignUp, ConfirmCodeCheck)
+from rest_framework import filters, viewsets, mixins, status, generics
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
@@ -23,42 +17,39 @@ from django.core.mail import send_mail
 from django.db import IntegrityError
 from api.permissions import IsAdmin, IsModeraror, IsUser
 from api.pagination import UserPagination
+from reviews.models import Category, Genre, Title, User, Review, Comment
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     """Обрабатываем запросы о произведениях."""
-
-    queryset = Title.objects.all()
-    serializer_class = TitleSerializer
-    # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
-    # pagination_class =
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')).order_by('id')
+    permission_classes = (IsAdmin,)
+    pagination_class = UserPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
+    search_fields = ('=name',)
 
     def get_serializer_class(self):
-        """Определяем, какой сериализатор будет использован в зависимости от метода запроса."""
-        if self.request.method == 'GET':
+        """Определяем, какой сериализатор будет
+        использован в зависимости от метода запроса."""
+        if self.request.method in ['GET']:
             return TitleGETSerializer
         return TitleSerializer
 
-    # нужно написать функцию для предоставлении возсожности добавлять тайтлы и пр для админа. По аналогии с меой.
-
-
-class CreateListDestroyViewSet(mixins.CreateModelMixin,
-                               mixins.ListModelMixin,
-                               mixins.DestroyModelMixin,
-                               viewsets.GenericViewSet):
-    pass
-
-
+    def get_permissions(self):
+        """Выбираем permissions с правами доступа
+        в зависимости от метода запроса."""
+        if self.request.method == 'GET':
+            return (IsAuthenticatedOrReadOnly(),)
+        return super().get_permissions()
+       
+       
 class CategoryViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о категориях."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
-    # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
-    # pagination_class =
 
 
 class GenreViewSet(CreateListDestroyViewSet):
@@ -66,9 +57,6 @@ class GenreViewSet(CreateListDestroyViewSet):
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    lookup_field = 'slug'
-    # permission_classes = (IsAuthenticatedOrReadOnly,) Вообще на уровне проекта стоит IsAuthenticatedOrReadOnly
-    # pagination_class =
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -93,7 +81,6 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserSerializer
         return UserNotSafeSerializer
 
-    # вот типа такого, чтобы был пермижен класс и при каких метадах, без url_path только
     @action(methods=['GET', 'PATCH'], detail=False, url_path='me',
             permission_classes=(IsUser,))
     def user_self_profile(self, request):
@@ -148,3 +135,36 @@ class ConfirmCodeCheckView(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CommentViewSet(viewsets.ModelViewSet):
+    serializer_class = CommentSerializer
+    # permission_classes =
+
+    def get_queryset(self):
+        review = get_object_or_404(
+            Review,
+            id=self.kwargs.get('review_id'))
+        return review.comment.all()
+
+    def perform_create(self, serializer):
+        review = get_object_or_404(
+            Review,
+            id=self.kwargs.get('review_id'))
+        serializer.save(author=self.request.user, review=review)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+    # permission_classes =
+
+    def get_queryset(self):
+        title = get_object_or_404(
+            Title,
+            id=self.kwargs.get('title_id'))
+        return title.reviews.all
+
+    def perform_create(self, serializer):
+        title = get_object_or_404(
+            Title,
+            id=self.kwargs.get('title_id'))
+        serializer.save(author=self.request.user, title=title)
