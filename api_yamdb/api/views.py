@@ -19,7 +19,6 @@ from api.serializers import (CategorySerializer,
                              UserNotSafeSerializer)
 from reviews.models import (Category, Genre, Title, User)
 
-
 class TitleViewSet(viewsets.ModelViewSet):
     """Обрабатываем запросы о произведениях."""
     queryset = Title.objects.annotate(
@@ -43,19 +42,20 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.request.method == 'GET':
             return (IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
-
-
+       
+       
 class CategoryViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о категориях."""
+
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
 class GenreViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о жанрах."""
+
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-
 
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet для модели User."""
@@ -67,6 +67,7 @@ class UserViewSet(viewsets.ModelViewSet):
     pagination_class = UserPagination
     filter_backends = (filters.SearchFilter, DjangoFilterBackend,
                        filters.OrderingFilter)
+    http_method_names = ['get', 'post', 'patch', 'delete']
     search_fields = ('=username',)
     filterset_fields = ('role',)
     ordering_fields = ('username',)
@@ -89,7 +90,7 @@ class UserViewSet(viewsets.ModelViewSet):
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data,
-                                status=status.HTTP_201_CREATED)
+                                status=status.HTTP_200_OK)
             return Response(serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)
         serializer = self.get_serializer(self_profile)

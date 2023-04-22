@@ -148,7 +148,3 @@ dmypy.json
 # папки со статикой и медиа
 media/
 
-# пока неготовые файлы .py
-.paginations.py
-api/paginations.py
-.api/paginations.py
