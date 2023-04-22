@@ -1,6 +1,7 @@
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.tokens import default_token_generator
+from api.mixins import CreateListDestroyViewSet
 from api.filters import TitleFilter
 from api.serializers import (CategorySerializer, GenreSerializer,
                              TitleSerializer, TitleGETSerializer,
@@ -11,10 +12,9 @@ from rest_framework import filters, viewsets, mixins, status, generics
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
-from django.db import IntegrityError
 from api.permissions import IsAdmin, IsModeraror, IsUser
 from api.pagination import UserPagination
 from reviews.models import Category, Genre, Title, User, Review, Comment
@@ -43,8 +43,7 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.request.method == 'GET':
             return (IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
-       
-       
+
 class CategoryViewSet(CreateListDestroyViewSet):
     """Обрабатываем запросы о категориях."""
 
@@ -65,7 +64,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
-    permission_classes = (IsAdmin,)
+    permission_classes = (AllowAny,)
     pagination_class = UserPagination
     filter_backends = (filters.SearchFilter, DjangoFilterBackend,
                        filters.OrderingFilter)
@@ -101,40 +100,46 @@ class UserViewSet(viewsets.ModelViewSet):
 class SignUpView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSignUp
+    queryset = User.objects.all()
 
-    def user_create(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            try:
-                user, _ = User.objects.get_or_create(
-                    **serializer.validated_data)
-            except IntegrityError:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request):
+        email = request.data.get('email')
+        if User.objects.filter(email=email).exists():
+            user = User.objects.get(email=email)
             confirmation_code = default_token_generator.make_token(user)
-            send_mail(
-                'confirmation code',
-                confirmation_code,
-                None,
-                serializer.validated_data['email'],
-                fail_silently=False,
-            )
+            send_mail('confirmation code', confirmation_code, None,
+                      [email], fail_silently=False,)
+            return Response(status=status.HTTP_200_OK)
+        else:
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid(raise_exception=True):
+                username = serializer.validated_data.get('username')
+                usermail = serializer.validated_data.get('email')
+                user = User.objects.create(username=username, email=usermail)
+                confirmation_code = default_token_generator.make_token(user)
+            send_mail('confirmation code', confirmation_code, None,
+                      [usermail], fail_silently=False,)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-class ConfirmCodeCheckView(viewsets.ModelViewSet):
+
+class ConfirmCodeCheckView(generics.ListCreateAPIView):
+    permission_classes = (AllowAny,)
     serializer_class = ConfirmCodeCheck
+    queryset = User.objects.all()
 
-
-    def user_check_and_give_token(self, request):
-        serializer = self.get_serializer(data=request.data)
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             username = serializer.validated_data.get('username')
             confirmation_code = serializer.validated_data.get('confirmation_code')
-            user, _ = User.objects.get(username=username)
-            if default_token_generator.check_token(confirmation_code):
-                return AccessToken(user)
+            user = User.objects.get(username=username)
+            check_token = default_token_generator.check_token(user, confirmation_code)
+            if check_token is True:
+                return RefreshToken.access_token(user)
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer

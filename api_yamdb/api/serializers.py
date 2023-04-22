@@ -79,7 +79,7 @@ class UserSerializer(serializers.ModelSerializer):
                 fields=('username', 'email')
             )
         ]
-        
+
     def validate_username(self, value):
         if value.lower() == 'me':
             raise serializers.ValidationError(
@@ -119,7 +119,6 @@ class UserNotSafeSerializer(serializers.ModelSerializer):
 
 class UserSignUp(serializers.ModelSerializer):
     email = serializers.EmailField(max_length=100, required=True)
-    username = serializers.CharField(required=True)
 
     class Meta:
         model = User
@@ -151,10 +150,14 @@ class UserSignUp(serializers.ModelSerializer):
 
 
 class ConfirmCodeCheck(serializers.ModelSerializer):
+    username = serializers.CharField(required=True, )
+    confirmation_code = serializers.CharField(required=True)
 
     class Meta:
         model = User
         fields = ('username', 'confirmation_code')
+
+
 class ReviewSerializer(serializers.ModelSerializer):
     title = serializers.SlugRelatedField(
         slug_field='name',
