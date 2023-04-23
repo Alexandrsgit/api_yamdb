@@ -10,6 +10,7 @@ class CreateListDestroyViewSet(mixins.CreateModelMixin,
                                mixins.DestroyModelMixin,
                                viewsets.GenericViewSet):
     """Mixins для GET, POST, DELETE запросов."""
+
     permission_classes = (IsAdmin,)
     lookup_field = 'slug'
     pagination_class = UserPagination

@@ -14,6 +14,7 @@ MODEL_FILE = [
     (Comment, 'static/data/comments.csv')
 ]
 
+
 class Command(BaseCommand):
     """Загрузка базы данных из csv файла."""
 
