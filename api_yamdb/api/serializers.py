@@ -4,8 +4,6 @@ from rest_framework.relations import SlugRelatedField
 from rest_framework.validators import UniqueTogetherValidator
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ValidationError
-from django.contrib.auth.hashers import make_password
-
 from reviews.models import (Category, Genre, Title,
                             User, USER_ROLES, Comment, Review)
 
@@ -81,7 +79,7 @@ class UserSerializer(serializers.ModelSerializer):
                 fields=('username', 'email')
             )
         ]
-        
+
     def validate_username(self, value):
         if value.lower() == 'me':
             raise serializers.ValidationError(
@@ -117,6 +115,47 @@ class UserNotSafeSerializer(serializers.ModelSerializer):
                 fields=('username', 'email')
             )
         ]
+
+
+class UserSignUp(serializers.ModelSerializer):
+    email = serializers.EmailField(max_length=100, required=True)
+
+    class Meta:
+        model = User
+        fields = ('email', 'username')
+
+        validators = [
+            UniqueTogetherValidator(
+                queryset=User.objects.all(),
+                fields=('username', 'email')
+            )
+        ]
+
+    def validate_username(self, value):
+        if value.lower() == 'me':
+            raise serializers.ValidationError(
+                'нельзя использовать "me" как username')
+        return value
+
+    def validate(self, data):
+        if User.objects.filter(email=data.get('email')).exists():
+            raise serializers.ValidationError(
+                'Данный email уже используется'
+            )
+        if User.objects.filter(username=data.get('username')).exists():
+            raise serializers.ValidationError(
+                'Данный username уже используется'
+            )
+        return data
+
+
+class ConfirmCodeCheck(serializers.ModelSerializer):
+    username = serializers.CharField(required=True, )
+    confirmation_code = serializers.CharField(required=True)
+
+    class Meta:
+        model = User
+        fields = ('username', 'confirmation_code')
 
 
 class ReviewSerializer(serializers.ModelSerializer):
