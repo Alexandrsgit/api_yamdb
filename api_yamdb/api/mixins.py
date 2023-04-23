@@ -1,8 +1,8 @@
 from rest_framework import filters, mixins, viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
-from api.permissions import IsAdmin
 from api.pagination import UserPagination
+from api.permissions import IsAdmin
 
 
 class CreateListDestroyViewSet(mixins.CreateModelMixin,

@@ -1,11 +1,12 @@
 import datetime as dt
+
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 from rest_framework.validators import UniqueTogetherValidator
-from django.shortcuts import get_object_or_404
-from django.core.exceptions import ValidationError
-from reviews.models import (Category, Genre, Title,
-                            User, USER_ROLES, Comment, Review)
+
+from reviews.models import (USER_ROLES, Category, Comment, Genre, Review,
+                            Title, User)
 
 
 class GenreSerializer(serializers.ModelSerializer):

@@ -1,25 +1,24 @@
-from django.db.models import Avg
-from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.tokens import default_token_generator
-from api.mixins import CreateListDestroyViewSet
-from api.filters import TitleFilter
-from api.serializers import (CategorySerializer, GenreSerializer,
-                             TitleSerializer, TitleGETSerializer,
-                             UserSerializer, CommentSerializer,
-                             ReviewSerializer, UserNotSafeSerializer,
-                             UserSignUp, ConfirmCodeCheck)
-from rest_framework import filters, viewsets, status, generics
+from django.core.mail import send_mail
+from django.db.models import Avg
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
-from django.shortcuts import get_object_or_404
-from django.core.mail import send_mail
 
-from api.permissions import IsAdmin, IsModerOrAdminOrAuthor, IsUser
+from api.filters import TitleFilter
+from api.mixins import CreateListDestroyViewSet
 from api.pagination import UserPagination
-from reviews.models import Category, Genre, Title, User, Review
-
+from api.permissions import IsAdmin, IsModerOrAdminOrAuthor, IsUser
+from api.serializers import (CategorySerializer, CommentSerializer,
+                             ConfirmCodeCheck, GenreSerializer,
+                             ReviewSerializer, TitleGETSerializer,
+                             TitleSerializer, UserNotSafeSerializer,
+                             UserSerializer, UserSignUp)
+from reviews.models import Category, Genre, Review, Title, User
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -82,8 +81,8 @@ class UserViewSet(viewsets.ModelViewSet):
         если метод не безопасен.
         """
         if self.request.method == 'GET' or (
-                self.request.user.role == 'admin' or
-                self.request.user.is_superuser is True):
+                self.request.user.role == 'admin'
+                or self.request.user.is_superuser is True):
             return UserSerializer
         return UserNotSafeSerializer
 
@@ -115,8 +114,8 @@ class SignUpView(generics.CreateAPIView):
     def post(self, request):
         email = request.data.get('email')
         username = request.data.get('username')
-        if (User.objects.filter(email=email).exists() and
-                User.objects.filter(username=username).exists()):
+        if (User.objects.filter(email=email).exists()
+                and User.objects.filter(username=username).exists()):
             user = User.objects.get(email=email)
             confirmation_code = default_token_generator.make_token(user)
             send_mail('confirmation code', confirmation_code, None,
