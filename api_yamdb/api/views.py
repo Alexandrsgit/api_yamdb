@@ -12,7 +12,7 @@ from rest_framework import filters, viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from api.permissions import IsAdmin, IsModeraror, IsUser
@@ -32,8 +32,8 @@ class TitleViewSet(viewsets.ModelViewSet):
     search_fields = ('=name',)
 
     def get_serializer_class(self):
-        """Определяем, какой сериализатор будет использован в зависимости от
-        метода запроса."""
+        """Определяем, какой сериализатор будет использован в зависимости
+        от метода запроса."""
         if self.request.method in ['GET']:
             return TitleGETSerializer
         return TitleSerializer
@@ -76,7 +76,9 @@ class UserViewSet(viewsets.ModelViewSet):
     ordering_fields = ('username',)
 
     def get_serializer_class(self):
-        """Выбор какой сериализатор будет использован, если метод не безопасен."""
+        """Выбор какой сериализатор будет использован,
+        если метод не безопасен.
+        """
         if self.request.method == 'GET' or (
                 self.request.user.role == 'admin' or
                 self.request.user.is_superuser is True):
@@ -102,6 +104,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class SignUpView(generics.CreateAPIView):
+    """Регистрация пользователя."""
+
     permission_classes = (AllowAny,)
     serializer_class = UserSignUp
     queryset = User.objects.all()
@@ -109,7 +113,8 @@ class SignUpView(generics.CreateAPIView):
     def post(self, request):
         email = request.data.get('email')
         username = request.data.get('username')
-        if User.objects.filter(email=email).exists() and User.objects.filter(username=username).exists():
+        if (User.objects.filter(email=email).exists() and
+                User.objects.filter(username=username).exists()):
             user = User.objects.get(email=email)
             confirmation_code = default_token_generator.make_token(user)
             send_mail('confirmation code', confirmation_code, None,
@@ -138,12 +143,12 @@ class ConfirmCodeCheckView(generics.ListCreateAPIView):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             username = serializer.validated_data.get('username')
-            confirmation_code = serializer.validated_data.get('confirmation_code')
+            confirmation_code = (
+                serializer.validated_data.get('confirmation_code'))
             user = get_object_or_404(User, username=username)
-            if user.confirmation_code == confirmation_code:
-                token = RefreshToken.access_token(user)
-                serializer = self.serializer_class(token)
-                return Response(serializer.data, status=status.HTTP_200_OK)
+            if default_token_generator.check_token(user, confirmation_code):
+                return Response(f'token: {str(AccessToken.for_user(user))}',
+                                status=status.HTTP_200_OK)
             else:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
         else:
