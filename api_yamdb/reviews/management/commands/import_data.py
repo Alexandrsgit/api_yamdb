@@ -7,7 +7,7 @@ from reviews.models import (Category, Comment, Genre, GenreTitle,
 MODEL_FILE = [
     (Category, 'static/data/category.csv'),
     (Genre, 'static/data/genre.csv'),
-    (Title, 'static/data/titles.csv'),
+#    (Title, 'static/data/titles.csv'),
     (GenreTitle, 'static/data/genre_title.csv'),
     (User, 'static/data/users.csv'),
     (Review, 'static/data/review.csv'),
