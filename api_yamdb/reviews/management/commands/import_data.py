@@ -4,52 +4,39 @@ from django.core.management import BaseCommand
 from reviews.models import (Category, Comment, Genre, GenreTitle,
                             Title, Review, User)
 
-MODEL_FILE = [
-    (Category, 'static/data/category.csv'),
-    (Genre, 'static/data/genre.csv'),
-    (Title, 'static/data/titles.csv'),
-    (GenreTitle, 'static/data/genre_title.csv'),
-    (User, 'static/data/users.csv'),
-    (Review, 'static/data/review.csv'),
-    (Comment, 'static/data/comments.csv')
-]
+
+FILE_MODEL = {
+    'static/data/category.csv':
+        {Category: ('id', 'name', 'slug')},
+    'static/data/genre.csv':
+        {Genre: ('id', 'name', 'slug')},
+    'static/data/titles.csv':
+        {Title: ('id', 'name', 'year', 'category_id')},
+    'static/data/genre_title.csv':
+        {GenreTitle: ('id', 'title_id', 'genre_id')},
+    'static/data/users.csv':
+        {User: ('id', 'username', 'email', 'role',
+                'bio', 'first_name', 'last_name')},
+    'static/data/review.csv':
+        {Review: ('id', 'title_id', 'text', 'author_id', 'score', 'pub_date')},
+    'static/data/comments.csv':
+        {Comment: ('id', 'review_id', 'text', 'author_id', 'pub_date')}
+}
 
 
 class Command(BaseCommand):
     """Загрузка базы данных из csv файла."""
 
     def handle(self, *args, **options):
-        for model, fils in MODEL_FILE:
-            with open(fils, newline='') as csvfile:
-                record = []
-                for row in DictReader(csvfile):
-                    if model == Category or model == Genre:
+        for file, dictionary in FILE_MODEL.items():
+            for model, fieldnames in dictionary.items():
+                with open(file, newline='') as csvfile:
+                    fields = DictReader(csvfile, fieldnames=fieldnames)
+                    next(fields)
+                    record = []
+                    for row in fields:
                         records = model(**row)
-                    if model == Title:
-                        records = Title(id=row['id'], name=row['name'],
-                                        year=row['year'],
-                                        category_id=row['category'])
-                    if model == GenreTitle:
-                        records = GenreTitle(id=row['id'],
-                                             genre_id=row['genre_id'],
-                                             title_id=row['title_id'])
-                    if model == User:
-                        records = User(id=row['id'], username=row['username'],
-                                       email=row['email'], role=row['role'])
-                    if model == Review:
-                        records = Review(id=row['id'],
-                                         title_id=row['title_id'],
-                                         text=row['text'],
-                                         author_id=row['author'],
-                                         score=row['score'],
-                                         pub_date=row['pub_date'])
-                    if model == Comment:
-                        records = Comment(id=row['id'],
-                                          review_id=row['review_id'],
-                                          text=row['text'],
-                                          author_id=row['author'],
-                                          pub_date=row['pub_date'])
-                    record.append(records)
+                        record.append(records)
                 if model.objects.exists():
                     model.objects.all().delete()
                     self.stdout.write(self.style.SUCCESS(
