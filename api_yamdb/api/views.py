@@ -140,21 +140,33 @@ class ConfirmCodeCheckView(generics.ListCreateAPIView):
     serializer_class = ConfirmCodeCheck
     queryset = User.objects.all()
 
+#     def post(self, request):
+#         serializer = self.serializer_class(data=request.data)
+#         if serializer.is_valid():
+#             username = serializer.validated_data.get('username')
+#             confirmation_code = (
+#                 serializer.validated_data.get('confirmation_code'))
+#             user = get_object_or_404(User, username=username)
+#             if default_token_generator.check_token(user, confirmation_code):
+#                 return Response(f'token: {str(AccessToken.for_user(user))}',
+#                                 status=status.HTTP_200_OK)
+#             else:
+#                 return Response(status=status.HTTP_400_BAD_REQUEST)
+#         else:
+#             return Response(status=status.HTTP_400_BAD_REQUEST)
+
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            username = serializer.validated_data.get('username')
-            confirmation_code = (
-                serializer.validated_data.get('confirmation_code'))
-            user = get_object_or_404(User, username=username)
-            if default_token_generator.check_token(user, confirmation_code):
-                return Response(f'token: {str(AccessToken.for_user(user))}',
-                                status=status.HTTP_200_OK)
-            else:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-        else:
+        if not serializer.is_valid():
             return Response(status=status.HTTP_400_BAD_REQUEST)
-
+        username = serializer.validated_data.get('username')
+        confirmation_code = (
+            serializer.validated_data.get('confirmation_code'))
+        user = get_object_or_404(User, username=username)
+        if not default_token_generator.check_token(user, confirmation_code):
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(f'token: {str(AccessToken.for_user(user))}',
+                        status=status.HTTP_200_OK)
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
