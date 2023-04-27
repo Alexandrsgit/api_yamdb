@@ -31,8 +31,20 @@ class Command(BaseCommand):
         for file, dictionary in FILE_MODEL.items():
             for model, fieldnames in dictionary.items():
                 with open(file, newline='') as csvfile:
+
+                    # проверка на наличие и соответвие полей в csv-файле.
+                    model_field_names = [field.name for field
+                                         in model._meta.fields]
+                    csv_field_names = (csvfile.readline().replace('_id', '')
+                                       .split(','))
+                    if not csv_field_names:
+                        raise ValueError(
+                            f'В {file} отсутствует строка с названием полей.')
+                    for i in csv_field_names:
+                        if not i.rstrip('\n|\r') in model_field_names:
+                            raise NameError(f'В моделе {model} нет поля {i}.')
+
                     fields = DictReader(csvfile, fieldnames=fieldnames)
-                    next(fields)
                     record = []
                     for row in fields:
                         records = model(**row)
