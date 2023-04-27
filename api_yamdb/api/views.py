@@ -111,12 +111,45 @@ class SignUpView(generics.CreateAPIView):
     serializer_class = UserSignUp
     queryset = User.objects.all()
 
+#     def post(self, request):
+#         email = request.data.get('email')
+#         username = request.data.get('username')
+#         if (User.objects.filter(email=email).exists()
+#                 and User.objects.filter(username=username).exists()):
+#             user = User.objects.get(email=email)
+#             confirmation_code = default_token_generator.make_token(user)
+#             send_mail('confirmation code', confirmation_code, None,
+#                       [email], fail_silently=False,)
+#             return Response(status=status.HTTP_200_OK)
+#         else:
+#             serializer = self.serializer_class(data=request.data)
+#             if serializer.is_valid(raise_exception=True):
+#                 username = serializer.validated_data.get('username')
+#                 usermail = serializer.validated_data.get('email')
+#                 user = User.objects.create(username=username, email=usermail)
+#                 confirmation_code = default_token_generator.make_token(user)
+#                 send_mail('confirmation code', confirmation_code, None,
+#                           [usermail], fail_silently=False,)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+
+#     def post(self, request):
+#         serializer = self.serializer_class(data=request.data)
+#         if serializer.is_valid(raise_exception=True):
+#             username = serializer.validated_data.get('username')
+#             usermail = serializer.validated_data.get('email')
+#             user, created = User.objects.get_or_create(email=usermail, username=username)
+#             confirmation_code = default_token_generator.make_token(user)
+#             send_mail('confirmation code', confirmation_code, None,
+#                       [usermail], fail_silently=False,)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def post(self, request):
         email = request.data.get('email')
         username = request.data.get('username')
         if (User.objects.filter(email=email).exists()
                 and User.objects.filter(username=username).exists()):
-            user = User.objects.get(email=email)
+            user, created = User.objects.get_or_create(email=email, username=username)
             confirmation_code = default_token_generator.make_token(user)
             send_mail('confirmation code', confirmation_code, None,
                       [email], fail_silently=False,)
@@ -128,9 +161,10 @@ class SignUpView(generics.CreateAPIView):
                 usermail = serializer.validated_data.get('email')
                 user = User.objects.create(username=username, email=usermail)
                 confirmation_code = default_token_generator.make_token(user)
-            send_mail('confirmation code', confirmation_code, None,
-                      [usermail], fail_silently=False,)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+                send_mail('confirmation code', confirmation_code, None,
+                          [usermail], fail_silently=False,)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ConfirmCodeCheckView(generics.ListCreateAPIView):
