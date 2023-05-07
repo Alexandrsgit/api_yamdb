@@ -121,6 +121,21 @@ class User(AbstractUser):
             )
         ]
 
+    @property
+    def is_user(self):
+        """User permission."""
+        return self.is_user
+
+    @property
+    def is_moderator(self):
+        """Moderator permission."""
+        return self.is_moderator
+
+    @property
+    def is_admin(self):
+        """Admin permission."""
+        return self.is_admin
+
 
 class Review(models.Model):
     title = models.ForeignKey(

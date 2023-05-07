@@ -18,6 +18,7 @@ from api.serializers import (CategorySerializer, CommentSerializer,
                              ReviewSerializer, TitleGETSerializer,
                              TitleSerializer, UserNotSafeSerializer,
                              UserSerializer, UserSignUp)
+from api_yamdb.settings import EMAIL_HOST_USER
 from reviews.models import Category, Genre, Review, Title, User
 
 
@@ -114,11 +115,10 @@ class SignUpView(generics.CreateAPIView):
     def post(self, request):
         email = request.data.get('email')
         username = request.data.get('username')
-        if (User.objects.filter(email=email).exists()
-                and User.objects.filter(username=username).exists()):
+        if User.objects.filter(email=email, username=username).exists():
             user = User.objects.get(email=email)
             confirmation_code = default_token_generator.make_token(user)
-            send_mail('confirmation code', confirmation_code, None,
+            send_mail('confirmation code', confirmation_code, EMAIL_HOST_USER,
                       [email], fail_silently=False,)
             return Response(status=status.HTTP_200_OK)
         else:
@@ -128,9 +128,9 @@ class SignUpView(generics.CreateAPIView):
                 usermail = serializer.validated_data.get('email')
                 user = User.objects.create(username=username, email=usermail)
                 confirmation_code = default_token_generator.make_token(user)
-                send_mail('confirmation code', confirmation_code, None,
-                          [usermail], fail_silently=False,)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+                send_mail('confirmation code', confirmation_code,
+                          EMAIL_HOST_USER, [usermail], fail_silently=False,)
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ConfirmCodeCheckView(generics.ListCreateAPIView):

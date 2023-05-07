@@ -139,14 +139,20 @@ class UserSignUp(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        if User.objects.filter(email=data.get('email')).exists():
-            raise serializers.ValidationError(
-                'Данный email уже используется'
-            )
-        if User.objects.filter(username=data.get('username')).exists():
-            raise serializers.ValidationError(
-                'Данный username уже используется'
-            )
+        username = data.get('username')
+        email = data.get('email')
+        if User.objects.filter(username=username).exists():
+            user = User.objects.get(username=username)
+            if user.email != email:
+                raise serializers.ValidationError(
+                    'Данный username уже используется'
+                )
+        if User.objects.filter(email=email).exists():
+            user = User.objects.get(email=email)
+            if user.username != username:
+                raise serializers.ValidationError(
+                    'Данный email уже используется'
+                )
         return data
 
 
